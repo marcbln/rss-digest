@@ -8,7 +8,7 @@ A simple, stateless system to fetch RSS articles, generate AI-powered digests, a
 
 - **Stateless & Simple**: No database, no state tracking, no complex setup
 - **AI-Powered Digests**: Uses any OpenAI-compatible LLM API (OpenAI, DeepSeek, OpenRouter, etc.)
-- **Email Delivery**: Clean HTML digests sent via Gmail SMTP (Google Workspace)
+- **Email Delivery**: Clean HTML digests sent via any SMTP server (Gmail, Outlook, custom providers)
 - **Flexible Scheduling**: Run locally, via cron, or GitHub Actions
 - **Cost-Effective**: ~$0.007/month with Gemini Flash or DeepSeek (~1 cent!)
 - **Easy to Customize**: Simple config files for feeds and prompts
@@ -21,7 +21,7 @@ RSS Feeds → Fetch Articles → LLM Analysis → Email Digest
 
 1. **Fetch**: Pull articles from configured RSS feeds (default: last 7 days)
 2. **Analyze**: Send all articles to LLM in a single API call to generate digest
-3. **Send**: Email the HTML digest via Gmail SMTP
+3. **Send**: Email the HTML digest via your configured SMTP server
 
 ## Quick Start
 
@@ -60,12 +60,135 @@ uv run python src/main.py
 - **DeepSeek** (recommended): [platform.deepseek.com](https://platform.deepseek.com) → Set `OPENAI_BASE_URL=https://api.deepseek.com`
 - **OpenRouter**: [openrouter.ai/keys](https://openrouter.ai/keys) → Set `OPENAI_BASE_URL=https://openrouter.ai/api/v1`
 
-**Google Workspace / Gmail** (Email):
-- Enable 2-Factor Authentication on your Google Account: [myaccount.google.com/security](https://myaccount.google.com/security)
-- Generate an App Password: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-  - Select app: "Mail"
-  - Select device: "Other (Custom name)" - enter "RSS Digest"
-  - Click "Generate" and copy the 16-character password
+### Email Configuration
+
+Choose your SMTP provider and configure accordingly:
+
+**Option 1: Gmail (Recommended for simplicity)**
+- Enable 2-Factor Authentication: https://myaccount.google.com/security
+- Generate App Password: https://myaccount.google.com/apppasswords
+- Set SMTP_HOST=smtp.gmail.com, SMTP_PORT=587
+
+**Option 2: Outlook/Hotmail**
+- Use your Microsoft account credentials
+- Set SMTP_HOST=smtp-mail.outlook.com, SMTP_PORT=587
+
+**Option 3: European Email Providers**
+See detailed configurations below for popular European providers.
+
+**Option 4: Custom SMTP Provider**
+- Use your provider's SMTP server details
+- Common ports: 587 (STARTTLS), 465 (SSL), 25 (unencrypted)
+
+Environment variables:
+```bash
+# Generic SMTP configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@example.com
+SMTP_PASSWORD=your-app-password
+SMTP_STARTTLS=true
+FROM_EMAIL=your-email@example.com
+RECIPIENT_EMAIL=recipient@example.com
+EMAIL_SENDER_NAME=RSS Digest
+```
+
+## European Email Provider Configurations
+
+Below are SMTP configurations for popular European email providers that prioritize privacy and GDPR compliance:
+
+### German Providers
+
+**Posteo (Germany) - Privacy-focused, €1/month**
+```bash
+SMTP_HOST=posteo.de
+SMTP_PORT=587
+SMTP_USERNAME=yourname@posteo.de
+SMTP_PASSWORD=your-app-password
+SMTP_STARTTLS=true
+```
+- Requires app password generation
+- No ads, privacy-focused
+- Carbon-neutral hosting
+
+**Mailbox.org (Germany) - €1/month**
+```bash
+SMTP_HOST=smtp.mailbox.org
+SMTP_PORT=587
+SMTP_USERNAME=your-email@mailbox.org
+SMTP_PASSWORD=your-password
+SMTP_STARTTLS=true
+```
+- Includes office suite
+- Strong privacy features
+- Based in Germany
+
+**GMX (Germany) - Free tier available**
+```bash
+SMTP_HOST=mail.gmx.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmx.com
+SMTP_PASSWORD=your-password
+SMTP_STARTTLS=true
+```
+- Free with ads option
+- Large user base in Germany
+- Part of United Internet Group
+
+### Swiss Providers
+
+**ProtonMail (Switzerland) - Requires paid plan for SMTP**
+```bash
+SMTP_HOST=smtp.protonmail.ch
+SMTP_PORT=587
+SMTP_USERNAME=your-email@proton.me
+SMTP_PASSWORD=your-mail-password
+SMTP_STARTTLS=true
+```
+- End-to-end encryption
+- Paid plan required for SMTP access
+- Based in Switzerland (outside EU but strong privacy)
+
+### Other European Providers
+
+**Tutanota (Germany) - Limited SMTP access**
+```bash
+# Note: Tutanota primarily uses web interface
+# SMTP available only with specific business plans
+# Check current offerings at tutanota.com
+```
+
+**Inbox.eu (Latvia)**
+```bash
+SMTP_HOST=smtp.inbox.eu
+SMTP_PORT=587
+SMTP_USERNAME=your-email@inbox.eu
+SMTP_PASSWORD=your-password
+SMTP_STARTTLS=true
+```
+
+**Web.de (Germany)**
+```bash
+SMTP_HOST=smtp.web.de
+SMTP_PORT=587
+SMTP_USERNAME=your-email@web.de
+SMTP_PASSWORD=your-password
+SMTP_STARTTLS=true
+```
+
+### Choosing a European Provider
+
+**For Privacy**: Posteo, ProtonMail, Tutanota
+**For Free Service**: GMX, Web.de
+**For Features**: Mailbox.org (includes office suite)
+**For Business**: Mailbox.org, ProtonMail Business
+
+**Note**: Some providers may require:
+- App passwords instead of main password
+- Paid subscriptions for SMTP access
+- Specific account settings to enable external clients
+
+Always verify current settings in your provider's documentation as configurations may change.
 
 ### 2. Configure Environment
 
@@ -103,7 +226,7 @@ uv run python src/main.py
 
 ## Automation
 
-**GitHub Actions**: Settings → Secrets → Add: `OPENAI_API_KEY`, `OPENAI_BASE_URL` (if needed), `LLM_MODEL`, `SMTP_PASSWORD`, `FROM_EMAIL`, `RECIPIENT_EMAIL`
+**GitHub Actions**: Settings → Secrets → Add: `OPENAI_API_KEY`, `OPENAI_BASE_URL` (if needed), `LLM_MODEL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `FROM_EMAIL`, `RECIPIENT_EMAIL`
 
 **Cron**: `0 9 * * 1 cd /path/to/rss-digest && uv run python src/main.py`
 
@@ -138,12 +261,12 @@ rss-digest/
 - **DeepSeek**: ~$0.007/month (less than 1 cent!)
 - **OpenRouter (Gemini)**: ~$0.007/month
 - **OpenAI (GPT-4o-mini)**: ~$0.05/month
-- **Gmail SMTP**: Free (included with Google Workspace or personal Gmail)
+- **SMTP Email**: Free (included with most email services, some providers may charge)
 
 ## Troubleshooting
 
 - **No articles**: Try `--days 14 --verbose`
-- **Email fails**: Verify Gmail App Password is correct, ensure 2FA is enabled, check `digest.log`
+- **Email fails**: Verify SMTP credentials are correct, check server/port settings, ensure authentication is properly configured, check `digest.log`
 - **LLM errors**: Verify API key, check `OPENAI_BASE_URL`, check credits
 
 ## Contributing

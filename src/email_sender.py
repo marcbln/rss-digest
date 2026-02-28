@@ -1,12 +1,13 @@
 """
 Email Sender Module
-Handles email composition and sending via Google Workspace SMTP.
+Handles email composition and sending via generic SMTP servers.
 """
 
 import logging
 import smtplib
+import os
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -14,19 +15,65 @@ logger = logging.getLogger(__name__)
 
 
 class EmailSender:
-    """Sends digest emails via Google Workspace SMTP."""
+    """Sends digest emails via generic SMTP servers."""
 
-    def __init__(self, smtp_password: str, from_email: str):
+    def __init__(
+        self, 
+        smtp_host: str, 
+        smtp_port: int,
+        smtp_username: str,
+        smtp_password: str,
+        smtp_starttls: bool = True,
+        from_email: Optional[str] = None,
+        sender_name: str = "RSS Digest"
+    ):
         """
-        Initialize email sender.
+        Initialize email sender with generic SMTP configuration.
 
         Args:
-            smtp_password: Google App Password for SMTP authentication
-            from_email: Sender email address (Gmail address)
+            smtp_host: SMTP server hostname
+            smtp_port: SMTP server port
+            smtp_username: SMTP username (usually email address)
+            smtp_password: SMTP password
+            smtp_starttls: Whether to use STARTTLS encryption
+            from_email: Sender email address (defaults to smtp_username)
+            sender_name: Display name for sender
         """
+        self.smtp_host = smtp_host
+        self.smtp_port = smtp_port
+        self.smtp_username = smtp_username
         self.smtp_password = smtp_password
-        self.from_email = from_email
-        logger.info(f"Email sender initialized with from_email: {from_email}")
+        self.smtp_starttls = smtp_starttls
+        self.from_email = from_email or smtp_username
+        self.sender_name = sender_name
+        
+        logger.info(f"Email sender initialized with host: {smtp_host}:{smtp_port}")
+        logger.info(f"Sender: {self.sender_name} <{self.from_email}>")
+
+    def _create_smtp_connection(self) -> smtplib.SMTP:
+        """Create and configure SMTP connection."""
+        try:
+            server = smtplib.SMTP(self.smtp_host, self.smtp_port)
+            
+            if self.smtp_starttls:
+                server.starttls()
+                logger.debug("STARTTLS encryption enabled")
+            
+            server.login(self.smtp_username, self.smtp_password)
+            logger.debug("SMTP authentication successful")
+            
+            return server
+            
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"SMTP authentication failed: {str(e)}")
+            logger.error("Please verify your SMTP credentials")
+            raise
+        except smtplib.SMTPConnectError as e:
+            logger.error(f"Failed to connect to SMTP server {self.smtp_host}:{self.smtp_port}: {str(e)}")
+            raise
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTP error: {str(e)}")
+            raise
 
     def send_digest(
         self,
@@ -49,6 +96,7 @@ class EmailSender:
         Returns:
             True if sent successfully, False otherwise
         """
+        server = None
         try:
             # Load template if provided
             if template_path:
@@ -69,7 +117,7 @@ class EmailSender:
 
             msg = MIMEMultipart('alternative')
             msg['Subject'] = subject
-            msg['From'] = f"RSS Digest <{self.from_email}>"
+            msg['From'] = f"{self.sender_name} <{self.from_email}>"
             msg['To'] = recipient_email
 
             # Attach HTML content
@@ -77,26 +125,22 @@ class EmailSender:
             msg.attach(html_part)
 
             # Send email via SMTP
-            logger.info(f"Sending digest to {recipient_email} via SMTP")
-            server = smtplib.SMTP('smtp.gmail.com', 587)
-            server.starttls()
-            server.login(self.from_email, self.smtp_password)
+            logger.info(f"Sending digest to {recipient_email} via {self.smtp_host}:{self.smtp_port}")
+            server = self._create_smtp_connection()
             server.send_message(msg)
-            server.quit()
-
+            
             logger.info("Email sent successfully via SMTP")
             return True
 
-        except smtplib.SMTPAuthenticationError as e:
-            logger.error(f"SMTP authentication failed: {str(e)}")
-            logger.error("Please verify your Gmail address and App Password")
-            return False
-        except smtplib.SMTPException as e:
-            logger.error(f"SMTP error: {str(e)}")
-            return False
         except Exception as e:
             logger.error(f"Error sending email: {str(e)}")
             return False
+        finally:
+            if server:
+                try:
+                    server.quit()
+                except Exception:
+                    pass
 
     def send_test_email(self, recipient_email: str) -> bool:
         """
@@ -108,42 +152,40 @@ class EmailSender:
         Returns:
             True if sent successfully, False otherwise
         """
+        server = None
         try:
             test_content = """
             <h1>Test Email from RSS Digest</h1>
-            <p>This is a test email to verify your Gmail SMTP configuration.</p>
+            <p>This is a test email to verify your SMTP configuration.</p>
             <p>If you received this, your email setup is working correctly!</p>
             <p><small>Sent at: {}</small></p>
             """.format(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
             msg = MIMEMultipart('alternative')
             msg['Subject'] = "Test Email - RSS Digest"
-            msg['From'] = f"RSS Digest <{self.from_email}>"
+            msg['From'] = f"{self.sender_name} <{self.from_email}>"
             msg['To'] = recipient_email
 
             html_part = MIMEText(test_content, 'html')
             msg.attach(html_part)
 
             # Send via SMTP
-            server = smtplib.SMTP('smtp.gmail.com', 587)
-            server.starttls()
-            server.login(self.from_email, self.smtp_password)
+            logger.info(f"Sending test email to {recipient_email}")
+            server = self._create_smtp_connection()
             server.send_message(msg)
-            server.quit()
 
             logger.info("Test email sent successfully via SMTP")
             return True
 
-        except smtplib.SMTPAuthenticationError as e:
-            logger.error(f"SMTP authentication failed: {str(e)}")
-            logger.error("Please verify your Gmail address and App Password")
-            return False
-        except smtplib.SMTPException as e:
-            logger.error(f"SMTP error: {str(e)}")
-            return False
         except Exception as e:
             logger.error(f"Error sending test email: {str(e)}")
             return False
+        finally:
+            if server:
+                try:
+                    server.quit()
+                except Exception:
+                    pass
 
     def _create_simple_template(self, digest_html: str, date_range: str) -> str:
         """
@@ -256,18 +298,38 @@ class EmailSender:
             return False
 
 
-def test_email_sender(smtp_password: str, from_email: str, recipient: str) -> None:
+def test_email_sender(
+    smtp_host: str,
+    smtp_port: int,
+    smtp_username: str,
+    smtp_password: str,
+    recipient: str,
+    smtp_starttls: bool = True,
+    from_email: Optional[str] = None
+) -> None:
     """
-    Test email sender functionality.
+    Test email sender functionality with generic SMTP.
 
     Args:
-        smtp_password: Google App Password
-        from_email: Sender email address (Gmail)
+        smtp_host: SMTP server hostname
+        smtp_port: SMTP server port
+        smtp_username: SMTP username
+        smtp_password: SMTP password
         recipient: Test recipient email address
+        smtp_starttls: Whether to use STARTTLS
+        from_email: Sender email (defaults to smtp_username)
     """
-    sender = EmailSender(smtp_password, from_email)
+    sender = EmailSender(
+        smtp_host=smtp_host,
+        smtp_port=smtp_port,
+        smtp_username=smtp_username,
+        smtp_password=smtp_password,
+        smtp_starttls=smtp_starttls,
+        from_email=from_email
+    )
 
     print("\n=== Email Sender Test ===")
+    print(f"SMTP Server: {smtp_host}:{smtp_port}")
     print(f"Sending test email to: {recipient}")
 
     success = sender.send_test_email(recipient)
@@ -290,11 +352,33 @@ if __name__ == "__main__":
 
     load_dotenv()
 
+    # New generic SMTP configuration
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT")
+    smtp_username = os.getenv("SMTP_USERNAME")
     smtp_password = os.getenv("SMTP_PASSWORD")
-    from_email = os.getenv("FROM_EMAIL")
     recipient = os.getenv("RECIPIENT_EMAIL")
+    smtp_starttls = os.getenv("SMTP_STARTTLS", "true").lower() == "true"
+    from_email = os.getenv("FROM_EMAIL")
 
-    if smtp_password and from_email and recipient:
-        test_email_sender(smtp_password, from_email, recipient)
+    # Backward compatibility: check for old Gmail variables
+    if not smtp_host and os.getenv("SMTP_PASSWORD"):
+        logger.warning("Using deprecated Gmail configuration. Please update to new SMTP variables.")
+        smtp_host = "smtp.gmail.com"
+        smtp_port = "587"
+        smtp_username = os.getenv("FROM_EMAIL")
+        smtp_password = os.getenv("SMTP_PASSWORD")
+        from_email = smtp_username
+
+    if all([smtp_host, smtp_port, smtp_username, smtp_password, recipient]):
+        test_email_sender(
+            smtp_host=smtp_host,
+            smtp_port=int(smtp_port),
+            smtp_username=smtp_username,
+            smtp_password=smtp_password,
+            recipient=recipient,
+            smtp_starttls=smtp_starttls,
+            from_email=from_email
+        )
     else:
-        print("Please set SMTP_PASSWORD, FROM_EMAIL, and RECIPIENT_EMAIL in .env file")
+        print("Please set SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, and RECIPIENT_EMAIL in .env file")

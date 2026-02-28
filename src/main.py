@@ -41,25 +41,43 @@ class DigestOrchestrator:
 
     def __init__(
         self,
-        openai_api_key: str,
+        smtp_host: str,
+        smtp_port: int,
+        smtp_username: str,
         smtp_password: str,
-        from_email: str,
         recipient_email: str,
+        openai_api_key: str,
+        smtp_starttls: bool = True,
+        from_email: Optional[str] = None,
+        sender_name: str = "RSS Digest",
         openai_base_url: Optional[str] = None
     ):
         """
         Initialize the orchestrator with all necessary credentials.
 
         Args:
-            openai_api_key: OpenAI-compatible API key
-            smtp_password: Google App Password for SMTP authentication
-            from_email: Sender email address (Gmail address)
+            smtp_host: SMTP server hostname
+            smtp_port: SMTP server port
+            smtp_username: SMTP username (usually email address)
+            smtp_password: SMTP password
             recipient_email: Email address to send digest to
+            openai_api_key: OpenAI-compatible API key
+            smtp_starttls: Whether to use STARTTLS encryption
+            from_email: Sender email address (defaults to smtp_username)
+            sender_name: Display name for sender
             openai_base_url: Base URL for OpenAI-compatible API (optional)
         """
         self.rss_fetcher = RSSFetcher(RSS_FEEDS)
         self.llm_processor = LLMProcessor(openai_api_key, base_url=openai_base_url)
-        self.email_sender = EmailSender(smtp_password, from_email)
+        self.email_sender = EmailSender(
+            smtp_host=smtp_host,
+            smtp_port=smtp_port,
+            smtp_username=smtp_username,
+            smtp_password=smtp_password,
+            smtp_starttls=smtp_starttls,
+            from_email=from_email,
+            sender_name=sender_name
+        )
         self.recipient_email = recipient_email
 
         logger.info("Digest orchestrator initialized")
@@ -176,6 +194,63 @@ class DigestOrchestrator:
             return False
 
 
+def load_environment():
+    """Load and validate environment variables."""
+    load_dotenv(override=True)
+    
+    # Required LLM configuration
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+        raise ValueError("OPENAI_API_KEY environment variable is required")
+    
+    # Required SMTP configuration
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_port = os.getenv("SMTP_PORT")
+    smtp_username = os.getenv("SMTP_USERNAME")
+    smtp_password = os.getenv("SMTP_PASSWORD")
+    recipient_email = os.getenv("RECIPIENT_EMAIL")
+    
+    missing_vars = []
+    for var, value in [
+        ("SMTP_HOST", smtp_host),
+        ("SMTP_PORT", smtp_port),
+        ("SMTP_USERNAME", smtp_username),
+        ("SMTP_PASSWORD", smtp_password),
+        ("RECIPIENT_EMAIL", recipient_email)
+    ]:
+        if not value:
+            missing_vars.append(var)
+    
+    if missing_vars:
+        raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+    
+    # Optional configuration with defaults
+    openai_base_url = os.getenv("OPENAI_BASE_URL", "")
+    llm_model = os.getenv("LLM_MODEL", "gpt-4o-mini")
+    smtp_starttls = os.getenv("SMTP_STARTTLS", "true").lower() == "true"
+    from_email = os.getenv("FROM_EMAIL", smtp_username)
+    sender_name = os.getenv("EMAIL_SENDER_NAME", "RSS Digest")
+    
+    try:
+        smtp_port = int(smtp_port)
+    except ValueError:
+        raise ValueError("SMTP_PORT must be a valid integer")
+    
+    return {
+        "openai_api_key": openai_api_key,
+        "openai_base_url": openai_base_url,
+        "llm_model": llm_model,
+        "smtp_host": smtp_host,
+        "smtp_port": smtp_port,
+        "smtp_username": smtp_username,
+        "smtp_password": smtp_password,
+        "smtp_starttls": smtp_starttls,
+        "from_email": from_email,
+        "sender_name": sender_name,
+        "recipient_email": recipient_email
+    }
+
+
 def main():
     """Main entry point with CLI argument parsing."""
     parser = argparse.ArgumentParser(
@@ -218,32 +293,26 @@ def main():
     # Setup logging
     setup_logging(args.verbose)
 
-    # Load environment variables
-    load_dotenv()
-
-    # Check required environment variables
-    required_vars = [
-        'OPENAI_API_KEY',
-        'LLM_MODEL',
-        'SMTP_PASSWORD',
-        'FROM_EMAIL',
-        'RECIPIENT_EMAIL'
-    ]
-
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
-
-    if missing_vars:
-        logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+    # Load and validate environment variables
+    try:
+        env_config = load_environment()
+    except ValueError as e:
+        logger.error(str(e))
         logger.error("Please check your .env file")
         sys.exit(1)
 
     # Initialize orchestrator
     orchestrator = DigestOrchestrator(
-        openai_api_key=os.getenv('OPENAI_API_KEY'),
-        smtp_password=os.getenv('SMTP_PASSWORD'),
-        from_email=os.getenv('FROM_EMAIL'),
-        recipient_email=os.getenv('RECIPIENT_EMAIL'),
-        openai_base_url=os.getenv('OPENAI_BASE_URL')
+        smtp_host=env_config["smtp_host"],
+        smtp_port=env_config["smtp_port"],
+        smtp_username=env_config["smtp_username"],
+        smtp_password=env_config["smtp_password"],
+        recipient_email=env_config["recipient_email"],
+        openai_api_key=env_config["openai_api_key"],
+        smtp_starttls=env_config["smtp_starttls"],
+        from_email=env_config["from_email"],
+        sender_name=env_config["sender_name"],
+        openai_base_url=env_config["openai_base_url"]
     )
 
     # Run workflow
