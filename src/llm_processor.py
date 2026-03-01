@@ -5,7 +5,7 @@ Processes ContentItems using LLM and returns DigestResult.
 
 import logging
 from typing import List, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from openai import OpenAI
 from openai import RateLimitError, APIError, APIConnectionError
 
