@@ -1,7 +1,7 @@
 # Daily Digest Configuration
 # A lighter, daily overview of tech news
 
-name = "Daily Tech"
+name = "Tech Daily"
 description = "Daily digest of essential tech news and developments"
 schedule = "daily"
 days_lookback = 1

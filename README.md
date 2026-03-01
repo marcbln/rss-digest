@@ -27,7 +27,7 @@ RSS Feeds → Fetch Articles → LLM Analysis → Email Digest
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 2. Clone and setup
-git clone <your-repo>
+git clone https://github.com/marcbln/rss-digest.git
 cd rss-digest
 uv sync
 
@@ -45,9 +45,10 @@ Configs live in the `configs/` directory as TOML files:
 
 ```
 configs/
-├── ai-weekly.toml    # AI news weekly digest
-├── daily.toml        # Daily tech news
-└── custom.toml       # Your own custom digest
+├── ai-weekly.toml              # AI news weekly digest
+├── ai-assisted-programming.toml # AI coding tools & workflows
+├── tech-daily.toml             # Daily tech news
+└── custom.toml                 # Your own custom digest
 ```
 
 ### Available Configs
@@ -58,7 +59,7 @@ uv run python src/main.py --list
 
 # Run a specific config
 uv run python src/main.py --config ai-weekly
-uv run python src/main.py --config daily
+uv run python src/main.py --config tech-daily
 ```
 
 ### Creating Your Own Config
@@ -165,7 +166,7 @@ uv run python src/main.py --config ai-weekly --verbose
 
 **Daily (at 8 AM):**
 ```cron
-0 8 * * * cd /path/to/rss-digest && uv run python src/main.py --config daily
+0 8 * * * cd /path/to/rss-digest && uv run python src/main.py --config tech-daily
 ```
 
 ### GitHub Actions
@@ -201,7 +202,7 @@ jobs:
 rss-digest/
 ├── configs/              # TOML config files for different digests
 │   ├── ai-weekly.toml
-│   └── daily.toml
+│   └── tech-daily.toml
 ├── src/
 │   ├── main.py          # Entry point with --config support
 │   ├── rss_fetcher.py   # RSS feed fetching

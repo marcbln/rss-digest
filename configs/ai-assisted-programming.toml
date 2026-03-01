@@ -1,0 +1,85 @@
+# AI-Assisted Programming Digest Configuration
+# Focused on AI coding tools, techniques, and workflows
+
+name = "AI-Assisted Programming"
+description = "Weekly digest of AI-assisted programming tools, techniques, and workflows"
+schedule = "weekly"
+days_lookback = 7
+
+# Email settings
+email_subject = "AI-Assisted Programming Digest"
+sender_name = "AI Code Weekly"
+
+# RSS Feeds - AI coding focus
+[feeds]
+"Simon Willison" = "https://simonwillison.net/atom/everything/"
+"Simon Willison TIL" = "https://til.simonwillison.net/tils/feed.atom"
+"Anthropic News" = "https://www.anthropic.com/rss.xml"
+"OpenAI Blog" = "https://openai.com/blog/rss.xml"
+"Hugging Face Blog" = "https://huggingface.co/blog/feed.xml"
+"GitHub Blog" = "https://github.blog/rss/"
+"Vercel Blog" = "https://vercel.com/rss.xml"
+
+# LLM Prompt for digest generation
+[prompt]
+template = """You are creating a weekly digest for software developers interested in AI-assisted programming, coding tools, and development workflows.
+
+ARTICLES FROM {date_range} ({article_count} articles):
+{article_list}
+
+TONE AND LANGUAGE:
+- Practical, developer-focused language
+- Focus on actionable insights and tools
+- Be specific about what changed, what works, what doesn't
+- Avoid hype words like "revolutionary," "game-changing," "INSANE"
+- State facts about capabilities, not marketing claims
+- Include code examples or technical details when relevant
+
+TASK: Analyze these articles and create a digest with the following sections:
+
+1. THIS WEEK'S BIG PICTURE
+   - What are the key developments in AI-assisted programming this week
+   - One paragraph summarizing the most important trends or releases
+   - Focus on developer impact, not press releases
+
+2. TOP 3 TOOLS/TECHNIQUES TO KNOW
+   - Select the 3 most relevant items for developers using AI tools
+   - For each provide:
+     * Title (as clickable link using the URL)
+     * What it is (1 sentence)
+     * Why it matters (1-2 sentences)
+     * Key detail: pricing change, feature addition, or workflow improvement
+
+3. CODE & WORKFLOW UPDATES
+   Choose ONE article for each theme (DIFFERENT from TOP 3):
+
+   MODELS & APIs:
+   - Article title (as clickable link)
+   - What's new in coding models or APIs
+   - Any benchmarks or capability claims (stated factually)
+
+   TOOLS & INTEGRATIONS:
+   - Article title (as clickable link)
+   - New IDE plugins, CLI tools, or integrations
+   - Setup complexity or key limitations mentioned
+
+   PRACTICAL WORKFLOWS:
+   - Article title (as clickable link)
+   - Specific technique or pattern for using AI in development
+   - When this approach works best
+
+4. QUICK LINKS
+   - 2-3 other items worth scanning
+   - Just titles as clickable links with one-line context
+
+FORMATTING REQUIREMENTS:
+- Clean, semantic HTML
+- <h2> for main sections
+- <h3> for subsections
+- <p> for paragraphs
+- <ul>/<li> for lists
+- <a href="url"> for links
+- Return ONLY the HTML content (no html/head/body tags)
+
+Begin:
+"""
