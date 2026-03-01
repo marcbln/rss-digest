@@ -1,277 +1,246 @@
-![](img/robot_writing.jpg)
+# RSS Digest - Multi-Config Edition
 
-# RSS Weekly Digest
+A simple, stateless system to fetch RSS articles, generate AI-powered digests, and deliver them via email. Now with **multi-config support** — run multiple digests (daily, weekly, topic-specific) from the same installation.
 
-A simple, stateless system to fetch RSS articles, generate AI-powered digests, and deliver them via email. No database, no complexity—just RSS feeds, an LLM, and your inbox.
+No database, no complexity—just RSS feeds, an LLM, and your inbox.
 
 ## Features
 
+- **Multi-Config Support**: Define multiple TOML configs for different digests (AI weekly, daily tech, etc.)
 - **Stateless & Simple**: No database, no state tracking, no complex setup
 - **AI-Powered Digests**: Uses any OpenAI-compatible LLM API (OpenAI, DeepSeek, OpenRouter, etc.)
-- **Email Delivery**: Clean HTML digests sent via any SMTP server (Gmail, Outlook, custom providers)
+- **Email Delivery**: Clean HTML digests sent via any SMTP server
 - **Flexible Scheduling**: Run locally, via cron, or GitHub Actions
 - **Cost-Effective**: ~$0.007/month with Gemini Flash or DeepSeek (~1 cent!)
-- **Easy to Customize**: Simple config files for feeds and prompts
+- **Hype-Free**: Prompts designed to cut through marketing noise and focus on substance
 
-## How It Works
+## Workflow
 
 ```
 RSS Feeds → Fetch Articles → LLM Analysis → Email Digest
 ```
 
-1. **Fetch**: Pull articles from configured RSS feeds (default: last 7 days)
-2. **Analyze**: Send all articles to LLM in a single API call to generate digest
-3. **Send**: Email the HTML digest via your configured SMTP server
-
 ## Quick Start
 
-1. **Clone the repo**
 ```bash
-   git clone git@github.com:DataFrosch/rss-digest.git
-   ```
-2. **Add your favorite RSS feeds** in `config/feeds.py`.
-3. **Set your LLM API key** (DeepSeek, OpenAI, or OpenRouter).
-4. **Tweak the prompt** to match your interests.
-5. **Set up GitHub Actions** to automate your weekly digest.
-
-## Detailed setup
-
-```bash
-# 1. Install uv (Python package manager) if you don't have it
+# 1. Install uv if you don't have it
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 2. Clone and setup
-git clone git@github.com:DataFrosch/rss-digest.git
+git clone https://github.com/marcbln/rss-digest.git
 cd rss-digest
 uv sync
 
 # 3. Configure environment
 cp .env.example .env
-# Edit .env with your API keys (see Setup section)
+# Edit .env with your API keys and SMTP settings
 
-# 4. Run
-uv run python src/main.py
+# 4. Run your first digest (uses ai-weekly config by default)
+uv run python src/main.py --config ai-weekly --dry-run
 ```
 
-### 1. Get API Keys
+## Multi-Config Setup
 
-**LLM Provider** - Choose one:
-- **OpenAI**: [platform.openai.com](https://platform.openai.com) → API Keys → Leave `OPENAI_BASE_URL` empty
-- **DeepSeek** (recommended): [platform.deepseek.com](https://platform.deepseek.com) → Set `OPENAI_BASE_URL=https://api.deepseek.com`
-- **OpenRouter**: [openrouter.ai/keys](https://openrouter.ai/keys) → Set `OPENAI_BASE_URL=https://openrouter.ai/api/v1`
+Configs live in the `configs/` directory as TOML files:
 
-### Email Configuration
+```
+configs/
+├── ai-weekly.toml              # AI news weekly digest
+├── ai-assisted-programming.toml # AI coding tools & workflows
+├── tech-daily.toml             # Daily tech news
+└── custom.toml                 # Your own custom digest
+```
 
-Choose your SMTP provider and configure accordingly:
+### Available Configs
 
-**Option 1: Gmail (Recommended for simplicity)**
-- Enable 2-Factor Authentication: https://myaccount.google.com/security
-- Generate App Password: https://myaccount.google.com/apppasswords
-- Set SMTP_HOST=smtp.gmail.com, SMTP_PORT=587
-
-**Option 2: Outlook/Hotmail**
-- Use your Microsoft account credentials
-- Set SMTP_HOST=smtp-mail.outlook.com, SMTP_PORT=587
-
-**Option 3: European Email Providers**
-See detailed configurations below for popular European providers.
-
-**Option 4: Custom SMTP Provider**
-- Use your provider's SMTP server details
-- Common ports: 587 (STARTTLS), 465 (SSL), 25 (unencrypted)
-
-Environment variables:
 ```bash
-# Generic SMTP configuration
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your-email@example.com
-SMTP_PASSWORD=your-app-password
-SMTP_STARTTLS=true
-FROM_EMAIL=your-email@example.com
-RECIPIENT_EMAIL=recipient@example.com
-EMAIL_SENDER_NAME=RSS Digest
+# List all available configs
+uv run python src/main.py --list
+
+# Run a specific config
+uv run python src/main.py --config ai-weekly
+uv run python src/main.py --config tech-daily
 ```
 
-## European Email Provider Configurations
+### Creating Your Own Config
 
-Below are SMTP configurations for popular European email providers that prioritize privacy and GDPR compliance:
+Create a new file in `configs/`:
 
-### German Providers
+```toml
+# configs/my-digest.toml
 
-**Posteo (Germany) - Privacy-focused, €1/month**
-```bash
-SMTP_HOST=posteo.de
-SMTP_PORT=587
-SMTP_USERNAME=yourname@posteo.de
-SMTP_PASSWORD=your-app-password
-SMTP_STARTTLS=true
-```
-- Requires app password generation
-- No ads, privacy-focused
-- Carbon-neutral hosting
+name = "My Digest"
+description = "A custom digest for my interests"
+schedule = "weekly"  # daily, weekly, or custom
+days_lookback = 7
 
-**Mailbox.org (Germany) - €1/month**
-```bash
-SMTP_HOST=smtp.mailbox.org
-SMTP_PORT=587
-SMTP_USERNAME=your-email@mailbox.org
-SMTP_PASSWORD=your-password
-SMTP_STARTTLS=true
-```
-- Includes office suite
-- Strong privacy features
-- Based in Germany
+# Email settings
+email_subject = "My Custom Digest"
+sender_name = "My Bot"
 
-**GMX (Germany) - Free tier available**
-```bash
-SMTP_HOST=mail.gmx.com
-SMTP_PORT=587
-SMTP_USERNAME=your-email@gmx.com
-SMTP_PASSWORD=your-password
-SMTP_STARTTLS=true
-```
-- Free with ads option
-- Large user base in Germany
-- Part of United Internet Group
+# RSS Feeds
+[feeds]
+"Feed Name" = "https://example.com/rss.xml"
+"Another Feed" = "https://another.com/feed"
 
-### Swiss Providers
+# LLM Prompt
+[prompt]
+template = """Your custom prompt here...
 
-**ProtonMail (Switzerland) - Requires paid plan for SMTP**
-```bash
-SMTP_HOST=smtp.protonmail.ch
-SMTP_PORT=587
-SMTP_USERNAME=your-email@proton.me
-SMTP_PASSWORD=your-mail-password
-SMTP_STARTTLS=true
-```
-- End-to-end encryption
-- Paid plan required for SMTP access
-- Based in Switzerland (outside EU but strong privacy)
+ARTICLES FROM {date_range} ({article_count} articles):
+{article_list}
 
-### Other European Providers
-
-**Tutanota (Germany) - Limited SMTP access**
-```bash
-# Note: Tutanota primarily uses web interface
-# SMTP available only with specific business plans
-# Check current offerings at tutanota.com
+TASK: Create a digest...
+"""
 ```
 
-**Inbox.eu (Latvia)**
-```bash
-SMTP_HOST=smtp.inbox.eu
-SMTP_PORT=587
-SMTP_USERNAME=your-email@inbox.eu
-SMTP_PASSWORD=your-password
-SMTP_STARTTLS=true
-```
+## Configuration
 
-**Web.de (Germany)**
-```bash
-SMTP_HOST=smtp.web.de
-SMTP_PORT=587
-SMTP_USERNAME=your-email@web.de
-SMTP_PASSWORD=your-password
-SMTP_STARTTLS=true
-```
-
-### Choosing a European Provider
-
-**For Privacy**: Posteo, ProtonMail, Tutanota
-**For Free Service**: GMX, Web.de
-**For Features**: Mailbox.org (includes office suite)
-**For Business**: Mailbox.org, ProtonMail Business
-
-**Note**: Some providers may require:
-- App passwords instead of main password
-- Paid subscriptions for SMTP access
-- Specific account settings to enable external clients
-
-Always verify current settings in your provider's documentation as configurations may change.
-
-### 2. Configure Environment
+### 1. Environment Variables (.env)
 
 ```bash
 cp .env.example .env
-# Edit .env with your keys - see .env.example for provider-specific examples
 ```
 
-### 3. Customize Feeds (Optional)
+Edit `.env` with your settings:
 
-Edit `config/feeds.py` to add your RSS feeds:
+```bash
+# LLM Provider (OpenAI, DeepSeek, OpenRouter, etc.)
+OPENAI_API_KEY=your-api-key
+OPENAI_BASE_URL=           # Optional: for DeepSeek/OpenRouter
+LLM_MODEL=gpt-4o-mini      # or deepseek-chat, google/gemini-flash-1.5-8b
 
-```python
-RSS_FEEDS = {
-    "Tech News": "https://example.com/feed.xml",
-    "Your Blog": "https://yourblog.com/rss",
-}
+# SMTP Settings
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_STARTTLS=true
+
+# Email
+RECIPIENT_EMAIL=recipient@example.com
+FROM_EMAIL=your-email@gmail.com
+EMAIL_SENDER_NAME=RSS Digest
 ```
 
-You can also customize the LLM prompt in the same file.
+### 2. Config Files (configs/*.toml)
+
+Each config defines:
+- **RSS feeds** to monitor
+- **Schedule** (for documentation)
+- **LLM prompt** for digest generation
+- **Email subject/sender** names
+
+See `configs/ai-weekly.toml` for a full example.
 
 ## Usage
 
-```bash
-# Full digest
-uv run python src/main.py
+### CLI Options
 
-# Options:
-#   --test        Process only 5 articles
-#   --dry-run     Generate but don't send email
-#   --days N      Look back N days (default: 7)
-#   --verbose     Detailed logging
-#   --no-save     Don't save HTML file locally
+```bash
+# List available configs
+uv run python src/main.py --list
+
+# Run specific config
+uv run python src/main.py --config ai-weekly
+
+# Override lookback period
+uv run python src/main.py --config ai-weekly --days 3
+
+# Dry run (generate but don't send)
+uv run python src/main.py --config ai-weekly --dry-run
+
+# Test mode (only 5 articles)
+uv run python src/main.py --config ai-weekly --test
+
+# Verbose logging
+uv run python src/main.py --config ai-weekly --verbose
 ```
 
-## Automation
+### Cron Scheduling
 
-**GitHub Actions**: Settings → Secrets → Add: `OPENAI_API_KEY`, `OPENAI_BASE_URL` (if needed), `LLM_MODEL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `FROM_EMAIL`, `RECIPIENT_EMAIL`
+**Weekly (Mondays at 9 AM):**
+```cron
+0 9 * * 1 cd /path/to/rss-digest && uv run python src/main.py --config ai-weekly
+```
 
-**Cron**: `0 9 * * 1 cd /path/to/rss-digest && uv run python src/main.py`
+**Daily (at 8 AM):**
+```cron
+0 8 * * * cd /path/to/rss-digest && uv run python src/main.py --config tech-daily
+```
 
-## Customization
+### GitHub Actions
 
-- **RSS Feeds**: Edit `config/feeds.py`
-- **LLM Prompt**: Edit `DIGEST_GENERATION_PROMPT` in `config/feeds.py`
-- **LLM Model**: Change `LLM_MODEL` in `.env` (see `.env.example` for options)
-- **Email Template**: Edit `templates/email_template.html`
+The repo includes a workflow that can be duplicated for each config:
+
+```yaml
+# .github/workflows/ai-weekly.yml
+name: AI Weekly Digest
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Mondays at 9 AM
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync
+      - run: uv run python src/main.py --config ai-weekly
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+```
 
 ## Project Structure
 
 ```
 rss-digest/
+├── configs/              # TOML config files for different digests
+│   ├── ai-weekly.toml
+│   └── tech-daily.toml
 ├── src/
-│   ├── main.py           # Main orchestration
-│   ├── rss_fetcher.py    # RSS feed fetching
-│   ├── llm_processor.py  # LLM digest generation
-│   └── email_sender.py   # Email sending
-├── config/
-│   └── feeds.py          # Feed URLs & prompts
+│   ├── main.py          # Entry point with --config support
+│   ├── rss_fetcher.py   # RSS feed fetching
+│   ├── llm_processor.py # LLM digest generation
+│   ├── email_sender.py  # Email sending
+│   └── config/          # Config loading utilities
+│       ├── __init__.py
+│       └── loader.py
 ├── templates/
 │   └── email_template.html
-├── .github/workflows/
-│   └── weekly_digest.yml # GitHub Actions
-├── .env.example          # Environment template
-└── pyproject.toml        # Dependencies
+├── .env.example
+└── pyproject.toml
 ```
 
-## Cost Estimate
+## Cost Estimates
 
 - **DeepSeek**: ~$0.007/month (less than 1 cent!)
 - **OpenRouter (Gemini)**: ~$0.007/month
 - **OpenAI (GPT-4o-mini)**: ~$0.05/month
-- **SMTP Email**: Free (included with most email services, some providers may charge)
+- **SMTP Email**: Free (included with most email services)
 
 ## Troubleshooting
 
-- **No articles**: Try `--days 14 --verbose`
-- **Email fails**: Verify SMTP credentials are correct, check server/port settings, ensure authentication is properly configured, check `digest.log`
-- **LLM errors**: Verify API key, check `OPENAI_BASE_URL`, check credits
+**No articles fetched:**
+```bash
+uv run python src/main.py --config ai-weekly --days 14 --verbose
+```
 
-## Contributing
+**Email fails:**
+- Verify SMTP credentials
+- Check server/port settings
+- Review `digest.log`
 
-Issues and PRs welcome!
+**Config errors:**
+```bash
+# Validate your config
+uv run python -c "from config.loader import load_config; print(load_config('your-config'))"
+```
 
 ## License
 

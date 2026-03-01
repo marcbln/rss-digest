@@ -2,6 +2,7 @@
 Main Orchestration Script
 Simplified workflow: Fetch RSS articles → Generate AI digest → Send email
 No database dependencies - completely stateless.
+Supports multiple TOML/YAML config files for different digests.
 """
 
 import os
@@ -9,14 +10,14 @@ import sys
 import logging
 import argparse
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from dotenv import load_dotenv
 
 from rss_fetcher import RSSFetcher
 from llm_processor import LLMProcessor
 from email_sender import EmailSender
-from config.feeds import RSS_FEEDS, DIGEST_GENERATION_PROMPT
+from config.loader import load_config, list_available_configs
 
 
 # Configure logging
@@ -41,6 +42,7 @@ class DigestOrchestrator:
 
     def __init__(
         self,
+        config: Dict[str, Any],
         smtp_host: str,
         smtp_port: int,
         smtp_username: str,
@@ -49,13 +51,15 @@ class DigestOrchestrator:
         openai_api_key: str,
         smtp_starttls: bool = True,
         from_email: Optional[str] = None,
-        sender_name: str = "RSS Digest",
-        openai_base_url: Optional[str] = None
+        sender_name: Optional[str] = None,
+        openai_base_url: Optional[str] = None,
+        llm_model: Optional[str] = None
     ):
         """
-        Initialize the orchestrator with all necessary credentials.
+        Initialize the orchestrator with config and credentials.
 
         Args:
+            config: Loaded TOML config dictionary
             smtp_host: SMTP server hostname
             smtp_port: SMTP server port
             smtp_username: SMTP username (usually email address)
@@ -64,11 +68,21 @@ class DigestOrchestrator:
             openai_api_key: OpenAI-compatible API key
             smtp_starttls: Whether to use STARTTLS encryption
             from_email: Sender email address (defaults to smtp_username)
-            sender_name: Display name for sender
+            sender_name: Display name for sender (defaults to config value)
             openai_base_url: Base URL for OpenAI-compatible API (optional)
+            llm_model: LLM model to use (optional)
         """
-        self.rss_fetcher = RSSFetcher(RSS_FEEDS)
-        self.llm_processor = LLMProcessor(openai_api_key, base_url=openai_base_url)
+        self.config = config
+        self.rss_fetcher = RSSFetcher(config['feeds'])
+        self.llm_processor = LLMProcessor(
+            openai_api_key,
+            model=llm_model,
+            base_url=openai_base_url
+        )
+        
+        # Use config sender_name if not provided
+        effective_sender_name = sender_name or config.get('sender_name', 'RSS Digest')
+        
         self.email_sender = EmailSender(
             smtp_host=smtp_host,
             smtp_port=smtp_port,
@@ -76,15 +90,15 @@ class DigestOrchestrator:
             smtp_password=smtp_password,
             smtp_starttls=smtp_starttls,
             from_email=from_email,
-            sender_name=sender_name
+            sender_name=effective_sender_name
         )
         self.recipient_email = recipient_email
 
-        logger.info("Digest orchestrator initialized")
+        logger.info(f"Digest orchestrator initialized for: {config['name']}")
 
     def generate_and_send_digest(
         self,
-        days: int = 7,
+        days: Optional[int] = None,
         dry_run: bool = False,
         save_html: bool = True,
         limit: Optional[int] = None
@@ -93,7 +107,7 @@ class DigestOrchestrator:
         Complete workflow: Fetch articles, generate digest, and send email.
 
         Args:
-            days: Number of days to look back for articles
+            days: Number of days to look back (defaults to config value)
             dry_run: If True, generate but don't send email
             save_html: If True, save digest as HTML file
             limit: Limit number of articles (for testing)
@@ -101,8 +115,19 @@ class DigestOrchestrator:
         Returns:
             True if successful, False otherwise
         """
+        # Use config days_lookback if not specified
+        if days is None:
+            days = self.config.get('days_lookback', 7)
+        
+        # Get prompt template from config
+        prompt_config = self.config.get('prompt', {})
+        prompt_template = prompt_config.get('template', self._default_prompt())
+        
+        # Get email subject from config
+        email_subject = self.config.get('email_subject', f"{self.config['name']} Digest")
+
         logger.info("=" * 60)
-        logger.info("STARTING RSS DIGEST WORKFLOW")
+        logger.info(f"STARTING {self.config['name'].upper()} DIGEST WORKFLOW")
         logger.info("=" * 60)
 
         try:
@@ -132,7 +157,7 @@ class DigestOrchestrator:
             # Generate digest HTML in a single LLM call
             digest_html = self.llm_processor.generate_digest_from_articles(
                 articles,
-                DIGEST_GENERATION_PROMPT,
+                prompt_template,
                 date_range
             )
 
@@ -149,11 +174,12 @@ class DigestOrchestrator:
             # Step 3: Save HTML if requested
             if save_html:
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filepath = f"digest_{timestamp}.html"
+                safe_name = self.config['name'].lower().replace(' ', '-')
+                filepath = f"digest_{safe_name}_{timestamp}.html"
                 self.email_sender.save_digest_html(digest_html, date_range, filepath)
                 logger.info(f"✓ Digest saved to {filepath}")
 
-            # Step 3: Send email (unless dry run)
+            # Step 4: Send email (unless dry run)
             if not dry_run:
                 logger.info("\n[STEP 3] Sending digest email")
                 success = self.email_sender.send_digest(
@@ -161,7 +187,8 @@ class DigestOrchestrator:
                     digest_html=digest_html,
                     date_range=date_range,
                     article_count=len(articles),
-                    template_path="templates/email_template.html"
+                    template_path="templates/email_template.html",
+                    subject_override=email_subject
                 )
 
                 if success:
@@ -170,6 +197,7 @@ class DigestOrchestrator:
                     logger.info("WORKFLOW COMPLETE")
                     logger.info("=" * 60)
                     logger.info(f"\nSummary:")
+                    logger.info(f"  Digest: {self.config['name']}")
                     logger.info(f"  Articles processed: {len(articles)}")
                     logger.info(f"  Date range: {date_range}")
                     logger.info(f"  Total tokens: {usage['total_tokens']}")
@@ -184,6 +212,7 @@ class DigestOrchestrator:
                 logger.info("WORKFLOW COMPLETE (DRY RUN)")
                 logger.info("=" * 60)
                 logger.info(f"\nSummary:")
+                logger.info(f"  Digest: {self.config['name']}")
                 logger.info(f"  Articles processed: {len(articles)}")
                 logger.info(f"  Date range: {date_range}")
                 logger.info(f"  Total tokens: {usage['total_tokens']}")
@@ -192,6 +221,34 @@ class DigestOrchestrator:
         except Exception as e:
             logger.error(f"Error in workflow: {str(e)}", exc_info=True)
             return False
+
+    def _default_prompt(self) -> str:
+        """Return a default prompt template."""
+        return """You are creating a news digest from the following articles.
+
+ARTICLES FROM {date_range} ({article_count} articles):
+{article_list}
+
+TASK: Create a digest with the following sections:
+
+1. BIG PICTURE
+   - One paragraph summary of main themes
+
+2. TOP 3 ARTICLES
+   - For each: Title (as clickable link) + 2-3 sentence summary
+
+3. OTHER NOTABLE ITEMS
+   - 3-4 other articles worth mentioning
+
+FORMATTING:
+- Use clean, semantic HTML
+- <h2> for main sections
+- <p> for paragraphs
+- <a href="url"> for links
+- Return ONLY the HTML content
+
+Begin:
+"""
 
 
 def load_environment():
@@ -229,7 +286,7 @@ def load_environment():
     llm_model = os.getenv("LLM_MODEL", "gpt-4o-mini")
     smtp_starttls = os.getenv("SMTP_STARTTLS", "true").lower() == "true"
     from_email = os.getenv("FROM_EMAIL", smtp_username)
-    sender_name = os.getenv("EMAIL_SENDER_NAME", "RSS Digest")
+    sender_name = os.getenv("EMAIL_SENDER_NAME")
     
     try:
         smtp_port = int(smtp_port)
@@ -254,7 +311,20 @@ def load_environment():
 def main():
     """Main entry point with CLI argument parsing."""
     parser = argparse.ArgumentParser(
-        description="RSS Weekly Digest - Automated RSS monitoring and digest generation"
+        description="RSS Digest - Multi-config RSS monitoring and digest generation"
+    )
+
+    parser.add_argument(
+        '--config',
+        type=str,
+        default='ai-weekly',
+        help='Config file to use (default: ai-weekly). Use --list to see available configs.'
+    )
+
+    parser.add_argument(
+        '--list',
+        action='store_true',
+        help='List available configs and exit'
     )
 
     parser.add_argument(
@@ -272,8 +342,8 @@ def main():
     parser.add_argument(
         '--days',
         type=int,
-        default=7,
-        help='Number of days to look back for articles (default: 7)'
+        default=None,
+        help='Number of days to look back for articles (overrides config)'
     )
 
     parser.add_argument(
@@ -293,6 +363,18 @@ def main():
     # Setup logging
     setup_logging(args.verbose)
 
+    # List configs if requested
+    if args.list:
+        configs = list_available_configs()
+        if configs:
+            print("\nAvailable configs:")
+            for config in configs:
+                print(f"  - {config}")
+            print("\nUse with: --config <name>")
+        else:
+            print("\nNo configs found in configs/ directory")
+        sys.exit(0)
+
     # Load and validate environment variables
     try:
         env_config = load_environment()
@@ -301,8 +383,19 @@ def main():
         logger.error("Please check your .env file")
         sys.exit(1)
 
+    # Load the digest config
+    try:
+        digest_config = load_config(args.config)
+    except FileNotFoundError as e:
+        logger.error(str(e))
+        sys.exit(1)
+    except ValueError as e:
+        logger.error(f"Invalid config: {e}")
+        sys.exit(1)
+
     # Initialize orchestrator
     orchestrator = DigestOrchestrator(
+        config=digest_config,
         smtp_host=env_config["smtp_host"],
         smtp_port=env_config["smtp_port"],
         smtp_username=env_config["smtp_username"],
@@ -312,7 +405,8 @@ def main():
         smtp_starttls=env_config["smtp_starttls"],
         from_email=env_config["from_email"],
         sender_name=env_config["sender_name"],
-        openai_base_url=env_config["openai_base_url"]
+        openai_base_url=env_config["openai_base_url"],
+        llm_model=env_config["llm_model"]
     )
 
     # Run workflow

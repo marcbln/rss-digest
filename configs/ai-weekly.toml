@@ -1,0 +1,100 @@
+# AI Weekly Digest Configuration
+# A curated weekly digest of AI news and research
+
+name = "AI Weekly"
+description = "Weekly digest of AI news, research, and industry developments"
+schedule = "weekly"  # daily, weekly, or custom
+days_lookback = 7
+
+# Email settings (can override .env defaults)
+email_subject = "AI Weekly Digest"
+sender_name = "AI Weekly"
+
+# RSS Feeds - AI focused
+[feeds]
+"Simon Willison" = "https://simonwillison.net/atom/everything/"
+"Simon Willison TIL" = "https://til.simonwillison.net/tils/feed.atom"
+"AI News - The Verge" = "https://www.theverge.com/ai-artificial-intelligence/rss/index.xml"
+"TechCrunch AI" = "https://techcrunch.com/category/artificial-intelligence/feed/"
+"MIT Technology Review - AI" = "https://www.technologyreview.com/topic/artificial-intelligence/feed"
+"Google AI Blog" = "https://ai.googleblog.com/feeds/posts/default"
+"OpenAI Blog" = "https://openai.com/blog/rss.xml"
+"Anthropic News" = "https://www.anthropic.com/rss.xml"
+"Papers With Code" = "https://paperswithcode.com/rss"
+"Hugging Face Blog" = "https://huggingface.co/blog/feed.xml"
+"AI Alignment Forum" = "https://alignmentforum.org/rss.xml"
+"Import AI" = "https://importai.substack.com/feed"
+"The Batch - DeepLearning.AI" = "https://www.deeplearning.ai/the-batch/rss/"
+"One Useful Thing" = "https://www.oneusefulthing.org/rss"
+
+# LLM Prompt for digest generation
+[prompt]
+template = """You are creating a weekly digest for someone interested in AI developments, research, and industry news.
+
+ARTICLES FROM {date_range} ({article_count} articles):
+{article_list}
+
+TONE AND LANGUAGE:
+- Use factual, descriptive language
+- State what happened, where, when, who was involved, and direct factual consequences
+- Let events speak for themselves through clear description
+- Focus on observable actions and stated positions
+- Write in plain, straightforward prose
+- Avoid hype words like "revolutionary," "game-changing," "INSANE"
+- Be skeptical of marketing claims
+
+TASK: Analyze these articles and create a comprehensive digest with the following sections:
+
+1. THIS WEEK'S BIG PICTURE
+   - Analyze all articles to identify the main story or theme this week
+   - Write ONE paragraph describing the main developments in simple, factual language
+   - Focus on what actually matters, not what has the loudest marketing
+
+2. TOP 3 ARTICLES TO READ
+   - Select the 3 most substantive articles based on:
+     * Actual technical or business significance
+     * Novel insights or developments
+     * Quality of reporting/analysis
+   - For each article provide:
+     * Title (as clickable link using the URL)
+     * 2-3 sentence summary in plain language
+     * Key context or direct impact (1 sentence, stated factually)
+
+3. WHAT'S HAPPENING
+   Choose ONE article for each theme below (select DIFFERENT articles from those in TOP 3):
+
+   RESEARCH & MODELS:
+   - Article title (as clickable link)
+   - Simple 2-sentence summary
+   - Focus on new papers, model releases, or research findings
+
+   INDUSTRY & BUSINESS:
+   - Article title (as clickable link)
+   - Simple 2-sentence summary
+   - Focus on company moves, funding, product launches
+
+   POLICY & SOCIETY:
+   - Article title (as clickable link)
+   - Simple 2-sentence summary
+   - Focus on regulation, ethics, real-world impact
+
+4. WORTH A LOOK
+   - 2-3 interesting links that didn't make the main sections
+   - One sentence each on why they matter
+
+FORMATTING REQUIREMENTS:
+- Use simple, clear language throughout (write like you're explaining to someone who's half asleep)
+- Be to the point, use sober language, state facts directly
+- Describe events as they occurred 
+- Format as clean, semantic HTML:
+  * <h2> for main sections
+  * <h3> for subsections
+  * <p> for paragraphs
+  * <ul>/<li> for lists
+  * <a href="url"> for article links
+- Each article should appear only ONCE in the entire digest
+- Do NOT include introductory text like "Here is your weekly digest..."
+- Return ONLY the HTML content for the digest body (no html/head/body tags)
+
+Begin your analysis and digest creation now:
+"""
