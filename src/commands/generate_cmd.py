@@ -11,11 +11,12 @@ from typing import Optional
 import typer
 from rich.console import Console
 from dotenv import load_dotenv
+import json
 
 from src.fetchers.rss import RSSFetcher
 from src.publishers.file_system import FileSystemPublisher
 from src.llm_processor import LLMProcessor
-from config.loader import load_config
+from src.config.loader import load_config
 
 app = typer.Typer(help="Generate digests and save as Markdown")
 console = Console()
@@ -40,7 +41,8 @@ def run(
     output_dir: str = typer.Option("content/digests", "--output", "-o", help="Output directory for digests"),
     days: Optional[int] = typer.Option(None, "--days", "-d", help="Days to look back (overrides config)"),
     limit: Optional[int] = typer.Option(None, "--limit", "-l", help="Limit number of articles (for testing)"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging")
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose logging"),
+    json_output: bool = typer.Option(False, "--json", "-j", help="Output result as JSON (for scripting)")
 ):
     """Generate a digest from RSS feeds and save as Markdown."""
     setup_logging(verbose)
@@ -114,11 +116,25 @@ def run(
 
     if success:
         filename = f"{digest.date.strftime('%Y-%m-%d')}-{digest.config_name.lower().replace(' ', '-')}.md"
-        console.print(f"[bold green]✓[/bold green] Digest saved to [cyan]{output_dir}/{filename}[/cyan]")
+        file_path = f"{output_dir}/{filename}"
         
-        # Show token usage
-        usage = llm_processor.get_token_usage_summary()
-        console.print(f"[dim]Token usage: {usage['total_tokens']} tokens[/dim]")
+        if json_output:
+            result = {
+                "success": True,
+                "file_path": file_path,
+                "config_name": config_name,
+                "articles_fetched": len(items),
+                "token_usage": llm_processor.get_token_usage_summary()
+            }
+            print(json.dumps(result))
+        else:
+            console.print(f"[bold green]✓[/bold green] Digest saved to [cyan]{file_path}[/cyan]")
+            # Show token usage
+            usage = llm_processor.get_token_usage_summary()
+            console.print(f"[dim]Token usage: {usage['total_tokens']} tokens[/dim]")
     else:
-        console.print("[bold red]Error: Failed to save digest[/bold red]")
+        if json_output:
+            print(json.dumps({"success": False, "error": "Failed to save digest"}))
+        else:
+            console.print("[bold red]Error: Failed to save digest[/bold red]")
         raise typer.Exit(1)

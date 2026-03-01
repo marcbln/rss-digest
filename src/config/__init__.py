@@ -1,5 +1,8 @@
-"""Centralized CLI settings."""
+"""
+Configuration module for RSS Digest.
+"""
 
 CLI_CONTEXT_SETTINGS = {
     "help_option_names": ["-h", "--help"],
 }
+
