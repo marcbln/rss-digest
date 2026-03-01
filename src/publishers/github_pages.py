@@ -50,6 +50,11 @@ class GitHubPagesPublisher(BasePublisher):
         try:
             repo = self._ensure_repo()
             
+            # Configure git user for commits (required by GitHub)
+            with repo.config_writer() as cfg:
+                cfg.set_value("user", "name", "RSS Digest Bot")
+                cfg.set_value("user", "email", "rss-digest@localhost")
+            
             # GitHub Pages (Jekyll) expects posts in _posts folder
             # with format YYYY-MM-DD-title.md
             posts_dir = self.local_clone_path / self.content_dir
@@ -87,7 +92,13 @@ class GitHubPagesPublisher(BasePublisher):
             repo.index.commit(commit_message)
             
             origin = repo.remotes.origin
-            origin.push()
+            push_info = origin.push()
+            
+            # Check for push errors
+            for info in push_info:
+                if info.flags & info.ERROR:
+                    print(f"Push error: {info.summary}")
+                    return False
             
             return True
             

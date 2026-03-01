@@ -134,11 +134,10 @@ def email(
 @app.command()
 def github_pages(
     file_path: Path = typer.Argument(..., help="Path to markdown digest file"),
-    repo_url: str = typer.Option(
-        ...,
+    repo_url: Optional[str] = typer.Option(
+        None,
         "--repo",
-        envvar="BLOG_REPO_URL",
-        help="GitHub Repository URL (e.g., git@github.com:user/blog.git)"
+        help="GitHub Repository URL (e.g., git@github.com:user/blog.git). Can also be set via BLOG_REPO_URL env var."
     ),
     layout: str = typer.Option("post", "--layout", help="Jekyll layout to use"),
     commit_message: Optional[str] = typer.Option(None, "--message", "-m", help="Custom commit message"),
@@ -166,6 +165,13 @@ def github_pages(
     if not repo_url:
         console.print("[bold red]Error: BLOG_REPO_URL not set. Provide --repo or set env var.[/bold red]")
         raise typer.Exit(1)
+    
+    # Convert SSH URL to HTTPS with token for authentication
+    # git@github.com:user/repo.git -> https://token@github.com/user/repo.git
+    github_token = os.getenv("GITHUB_TOKEN")
+    if github_token and repo_url.startswith("git@github.com:"):
+        repo_path = repo_url.replace("git@github.com:", "")
+        repo_url = f"https://{github_token}@github.com/{repo_path}"
 
     # Read and parse markdown file
     with open(file_path, "r", encoding="utf-8") as f:
@@ -178,9 +184,17 @@ def github_pages(
         frontmatter = {}
 
     # Reconstruct DigestResult
+    date_value = frontmatter.get("date")
+    if isinstance(date_value, datetime):
+        digest_date = date_value
+    elif isinstance(date_value, str):
+        digest_date = datetime.fromisoformat(date_value)
+    else:
+        digest_date = datetime.now()
+    
     digest = DigestResult(
         title=frontmatter.get("title", "Digest"),
-        date=datetime.fromisoformat(frontmatter["date"]) if "date" in frontmatter else datetime.now(),
+        date=digest_date,
         config_name=frontmatter.get("config", "unknown"),
         sources_analyzed=frontmatter.get("sources_analyzed", 0),
         markdown_body=markdown_body,
