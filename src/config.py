@@ -1,0 +1,5 @@
+"""Centralized CLI settings."""
+
+CLI_CONTEXT_SETTINGS = {
+    "help_option_names": ["-h", "--help"],
+}

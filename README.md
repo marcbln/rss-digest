@@ -1,24 +1,45 @@
-# RSS Digest - Multi-Config Edition
+# RSS Digest - Content Curation Engine
 
-A simple, stateless system to fetch RSS articles, generate AI-powered digests, and deliver them via email. Now with **multi-config support** — run multiple digests (daily, weekly, topic-specific) from the same installation.
+A modular, two-phase content curation system that fetches RSS articles, processes them with AI, and delivers polished digests. **Generate** content in one phase, **publish** it in another—enabling flexible workflows, archival, and multi-channel distribution.
 
-No database, no complexity—just RSS feeds, an LLM, and your inbox.
+No database, no complexity—just clean architecture, RSS feeds, an LLM, and your inbox.
+
+## Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Fetcher   │────▶│    LLM      │────▶│   Publish   │
+│   Plugins   │     │  Processor  │     │  Markdown   │
+└─────────────┘     └─────────────┘     └─────────────┘
+                                              │
+                        ┌─────────────────────┘
+                        ▼
+                 ┌─────────────┐     ┌─────────────┐
+                 │   Publish   │────▶│   Email     │
+                 │    Read     │     │   Sender    │
+                 │   Command   │     └─────────────┘
+                 └─────────────┘
+```
+
+**Phase 1: Generate**
+- Fetch content from RSS feeds (or future: YouTube, GitHub, Twitter)
+- Process with LLM to create curated digest
+- Output as Markdown with YAML frontmatter
+
+**Phase 2: Publish**
+- Read saved Markdown digest
+- Publish to destinations (Email, GitHub Pages, etc.)
 
 ## Features
 
-- **Multi-Config Support**: Define multiple TOML configs for different digests (AI weekly, daily tech, etc.)
+- **Two-Phase Architecture**: Separate content generation from publishing for flexibility
+- **Multi-Config Support**: Define multiple TOML configs for different digests
 - **Stateless & Simple**: No database, no state tracking, no complex setup
 - **AI-Powered Digests**: Uses any OpenAI-compatible LLM API (OpenAI, DeepSeek, OpenRouter, etc.)
 - **Email Delivery**: Clean HTML digests sent via any SMTP server
 - **Flexible Scheduling**: Run locally, via cron, or GitHub Actions
 - **Cost-Effective**: ~$0.007/month with Gemini Flash or DeepSeek (~1 cent!)
 - **Hype-Free**: Prompts designed to cut through marketing noise and focus on substance
-
-## Workflow
-
-```
-RSS Feeds → Fetch Articles → LLM Analysis → Email Digest
-```
 
 ## Quick Start
 
@@ -35,8 +56,11 @@ uv sync
 cp .env.example .env
 # Edit .env with your API keys and SMTP settings
 
-# 4. Run your first digest (uses ai-weekly config by default)
-uv run python src/main.py --config ai-weekly --dry-run
+# 4. Generate a digest (outputs to content/digests/)
+uv run rss-digest generate --config ai-weekly
+
+# 5. Publish the generated digest via email
+uv run rss-digest publish email content/digests/2026-03-01-ai-weekly.md
 ```
 
 ## Multi-Config Setup
@@ -55,11 +79,11 @@ configs/
 
 ```bash
 # List all available configs
-uv run python src/main.py --list
+ls configs/
 
-# Run a specific config
-uv run python src/main.py --config ai-weekly
-uv run python src/main.py --config tech-daily
+# Generate a specific config
+uv run rss-digest generate --config ai-weekly
+uv run rss-digest generate --config tech-daily
 ```
 
 ### Creating Your Own Config
@@ -135,38 +159,45 @@ See `configs/ai-weekly.toml` for a full example.
 
 ## Usage
 
-### CLI Options
+### Generate Command
 
 ```bash
-# List available configs
-uv run python src/main.py --list
+# Generate digest for a config
+uv run rss-digest generate --config ai-weekly
 
-# Run specific config
-uv run python src/main.py --config ai-weekly
+# Override output directory
+uv run rss-digest generate --config ai-weekly --output ./my-digests
 
 # Override lookback period
-uv run python src/main.py --config ai-weekly --days 3
+uv run rss-digest generate --config ai-weekly --days 3
 
-# Dry run (generate but don't send)
-uv run python src/main.py --config ai-weekly --dry-run
-
-# Test mode (only 5 articles)
-uv run python src/main.py --config ai-weekly --test
+# Limit articles for testing
+uv run rss-digest generate --config ai-weekly --limit 5
 
 # Verbose logging
-uv run python src/main.py --config ai-weekly --verbose
+uv run rss-digest generate --config ai-weekly --verbose
+```
+
+### Publish Command
+
+```bash
+# Publish a generated digest via email
+uv run rss-digest publish email content/digests/2026-03-01-ai-weekly.md
+
+# Verbose logging
+uv run rss-digest publish email content/digests/2026-03-01-ai-weekly.md --verbose
 ```
 
 ### Cron Scheduling
 
 **Weekly (Mondays at 9 AM):**
 ```cron
-0 9 * * 1 cd /path/to/rss-digest && uv run python src/main.py --config ai-weekly
+0 9 * * 1 cd /path/to/rss-digest && uv run rss-digest generate --config ai-weekly && uv run rss-digest publish email content/digests/$(date +\%Y-\%m-\%d)-ai-weekly.md
 ```
 
 **Daily (at 8 AM):**
 ```cron
-0 8 * * * cd /path/to/rss-digest && uv run python src/main.py --config tech-daily
+0 8 * * * cd /path/to/rss-digest && uv run rss-digest generate --config tech-daily && uv run rss-digest publish email content/digests/$(date +\%Y-\%m-\%d)-tech-daily.md
 ```
 
 ### GitHub Actions
@@ -186,7 +217,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3
       - run: uv sync
-      - run: uv run python src/main.py --config ai-weekly
+      - run: uv run rss-digest generate --config ai-weekly
+      - run: uv run rss-digest publish email content/digests/$(date +%Y-%m-%d)-ai-weekly.md
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           LLM_MODEL: ${{ secrets.LLM_MODEL }}
@@ -203,18 +235,60 @@ rss-digest/
 ├── configs/              # TOML config files for different digests
 │   ├── ai-weekly.toml
 │   └── tech-daily.toml
+├── content/digests/      # Generated Markdown digests
 ├── src/
-│   ├── main.py          # Entry point with --config support
-│   ├── rss_fetcher.py   # RSS feed fetching
-│   ├── llm_processor.py # LLM digest generation
-│   ├── email_sender.py  # Email sending
-│   └── config/          # Config loading utilities
-│       ├── __init__.py
-│       └── loader.py
+│   ├── cli.py           # Main entry point (Typer CLI)
+│   ├── config.py        # CLI settings
+│   ├── core/            # Core models and interfaces
+│   │   ├── models.py    # ContentItem, DigestResult (Pydantic)
+│   │   └── interfaces.py # BaseFetcher, BasePublisher (ABC)
+│   ├── fetchers/        # Content fetcher plugins
+│   │   └── rss.py       # RSS fetcher implementation
+│   ├── publishers/      # Publisher plugins
+│   │   ├── file_system.py  # Save as Markdown
+│   │   └── email.py     # Email publisher
+│   ├── commands/        # CLI subcommands
+│   │   ├── generate_cmd.py # Generate command
+│   │   └── publish_cmd.py  # Publish command
+│   └── llm_processor.py # LLM digest generation
+├── config/
+│   └── loader.py        # TOML config loading utilities
 ├── templates/
 │   └── email_template.html
 ├── .env.example
 └── pyproject.toml
+```
+
+## Extending the Engine
+
+### Adding a New Fetcher
+
+Create a new fetcher by implementing `BaseFetcher`:
+
+```python
+from src.core.interfaces import BaseFetcher
+from src.core.models import ContentItem
+
+class YouTubeFetcher(BaseFetcher):
+    def fetch(self, **kwargs) -> List[ContentItem]:
+        # Fetch YouTube data
+        items = []
+        # ... fetch logic ...
+        return items
+```
+
+### Adding a New Publisher
+
+Create a new publisher by implementing `BasePublisher`:
+
+```python
+from src.core.interfaces import BasePublisher
+from src.core.models import DigestResult
+
+class GitHubPagesPublisher(BasePublisher):
+    def publish(self, digest: DigestResult, **kwargs) -> bool:
+        # Publish to GitHub Pages
+        return True
 ```
 
 ## Cost Estimates
@@ -228,13 +302,13 @@ rss-digest/
 
 **No articles fetched:**
 ```bash
-uv run python src/main.py --config ai-weekly --days 14 --verbose
+uv run rss-digest generate --config ai-weekly --days 14 --verbose
 ```
 
 **Email fails:**
 - Verify SMTP credentials
 - Check server/port settings
-- Review `digest.log`
+- Run with `--verbose` for detailed logs
 
 **Config errors:**
 ```bash
