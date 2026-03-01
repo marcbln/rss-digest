@@ -81,7 +81,8 @@ class EmailSender:
         digest_html: str,
         date_range: str,
         article_count: int,
-        template_path: Optional[str] = None
+        template_path: Optional[str] = None,
+        subject_override: Optional[str] = None
     ) -> bool:
         """
         Send weekly digest email.
@@ -92,6 +93,7 @@ class EmailSender:
             date_range: Date range string for subject line
             article_count: Number of articles in digest
             template_path: Optional path to HTML template file
+            subject_override: Optional custom subject line (defaults to "Your Weekly RSS Digest...")
 
         Returns:
             True if sent successfully, False otherwise
@@ -112,8 +114,11 @@ class EmailSender:
             else:
                 full_html = self._create_simple_template(digest_html, date_range)
 
-            # Create email
-            subject = f"Your Weekly RSS Digest: {date_range} ({article_count} articles)"
+            # Create email subject
+            if subject_override:
+                subject = f"{subject_override}: {date_range} ({article_count} articles)"
+            else:
+                subject = f"Your Weekly RSS Digest: {date_range} ({article_count} articles)"
 
             msg = MIMEMultipart('alternative')
             msg['Subject'] = subject

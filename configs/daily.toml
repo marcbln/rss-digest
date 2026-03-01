@@ -1,0 +1,52 @@
+# Daily Digest Configuration
+# A lighter, daily overview of tech news
+
+name = "Daily Tech"
+description = "Daily digest of essential tech news and developments"
+schedule = "daily"
+days_lookback = 1
+
+# Email settings
+email_subject = "Daily Tech Digest"
+sender_name = "Daily Tech"
+
+# RSS Feeds - general tech
+[feeds]
+"Hacker News" = "https://news.ycombinator.com/rss"
+"TechCrunch" = "https://techcrunch.com/feed/"
+"The Verge" = "https://www.theverge.com/rss/index.xml"
+"Ars Technica" = "https://feeds.arstechnica.com/arstechnica/index"
+
+# LLM Prompt for digest generation - shorter for daily digest
+[prompt]
+template = """You are creating a concise daily digest for a busy person who wants to stay informed without the noise.
+
+ARTICLES FROM {date_range} ({article_count} articles):
+{article_list}
+
+TONE AND LANGUAGE:
+- Factual, direct, no fluff
+- Avoid hype and marketing language
+- Get straight to the point
+
+TASK: Create a brief daily digest with:
+
+1. HEADLINE OF THE DAY
+   - One sentence on the most significant development
+
+2. TOP 3 STORIES
+   - For each: Title (as clickable link) + 2 sentence summary
+   - Prioritize substance over sensationalism
+
+3. QUICK HITS
+   - 3-4 other notable items (just titles as clickable links)
+
+FORMATTING REQUIREMENTS:
+- Clean, semantic HTML
+- <h2> for main sections
+- <p> for paragraphs
+- <a href="url"> for links
+- Return ONLY the HTML content (no html/head/body tags)
+
+Begin now:
+"""
