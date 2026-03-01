@@ -1,7 +1,7 @@
 [project]
 name = "rss-digest"
-version = "0.2.0"
-description = "Simplified automated system to fetch, analyze, and deliver weekly digests from RSS feeds (stateless, no database)"
+version = "0.3.0"
+description = "Content Curation Engine - fetch, process, and publish RSS digests with a modular two-phase architecture"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -10,7 +10,15 @@ dependencies = [
     "openai>=1.12.0",
     "python-dotenv>=1.0.1",
     "toml>=0.10.2",
+    "typer[all]>=0.9.0",
+    "rich>=13.7.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+    "markdown>=3.5.0",
 ]
+
+[project.scripts]
+rss-digest = "src.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
