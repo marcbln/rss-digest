@@ -1,8 +1,8 @@
 # RSS Digest - Content Curation Engine
 
-A modular, two-phase content curation system that fetches RSS articles, processes them with AI, and delivers polished digests. **Generate** content in one phase, **publish** it in another—enabling flexible workflows, archival, and multi-channel distribution.
+A modular, two-phase content curation system that fetches RSS and Atom feeds, processes them with AI, and delivers polished digests. **Generate** content in one phase, **publish** it in another—enabling flexible workflows, archival, and multi-channel distribution.
 
-No database, no complexity—just clean architecture, RSS feeds, an LLM, and your inbox.
+No database, no complexity—just clean architecture, RSS/Atom feeds, an LLM, and your inbox.
 
 ## Architecture
 
@@ -22,7 +22,7 @@ No database, no complexity—just clean architecture, RSS feeds, an LLM, and you
 ```
 
 **Phase 1: Generate**
-- Fetch content from RSS feeds (or future: YouTube, GitHub, Twitter)
+- Fetch content from RSS and Atom feeds (or future: YouTube, GitHub, Twitter)
 - Process with LLM to create curated digest
 - Output as Markdown with YAML frontmatter
 
@@ -102,7 +102,7 @@ days_lookback = 7
 email_subject = "My Custom Digest"
 sender_name = "My Bot"
 
-# RSS Feeds
+# RSS/Atom Feeds
 [feeds]
 "Feed Name" = "https://example.com/rss.xml"
 "Another Feed" = "https://another.com/feed"
@@ -150,12 +150,22 @@ EMAIL_SENDER_NAME=RSS Digest
 ### 2. Config Files (configs/*.toml)
 
 Each config defines:
-- **RSS feeds** to monitor
+- **RSS and Atom feeds** to monitor
 - **Schedule** (for documentation)
 - **LLM prompt** for digest generation
 - **Email subject/sender** names
 
 See `configs/ai-weekly.toml` for a full example.
+
+## Feed Format Support
+
+RSS Digest supports both **RSS and Atom feed formats** through the universal `feedparser` library:
+
+- **RSS**: 0.9x, 1.0, 2.0
+- **Atom**: 0.3, 1.0  
+- **CDF**: Common Data Format
+
+You can use any standard RSS or Atom feed URL in your configuration files. The feed parser automatically detects the format and handles the parsing for you.
 
 ## Usage
 

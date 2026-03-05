@@ -14,6 +14,7 @@ sender_name = "AI Code Weekly"
 [feeds]
 "Simon Willison" = "https://simonwillison.net/atom/everything/"
 "Simon Willison TIL" = "https://til.simonwillison.net/tils/feed.atom"
+"Armin Ronacher" = "https://lucumr.pocoo.org/feed.atom"
 "Anthropic News" = "https://www.anthropic.com/rss.xml"
 "OpenAI Blog" = "https://openai.com/blog/rss.xml"
 "Hugging Face Blog" = "https://huggingface.co/blog/feed.xml"
