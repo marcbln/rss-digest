@@ -1,5 +1,11 @@
 # RSS Digest - Content Curation Engine
 
+> **DEPRECATED** — superseded by the multi-source `digester` v1.1
+> (`/home/marc/workspaces/digests/digester`), which now ships a `rss` adapter
+> (`digester rss add|list|remove`, `digester ingest --source rss`) alongside its
+> YouTube source. The email/blog publishing pipeline here may return as a
+> digester "publish" phase; until then this repo is frozen.
+
 A modular, two-phase content curation system that fetches RSS and Atom feeds, processes them with AI, and delivers polished digests. **Generate** content in one phase, **publish** it in another—enabling flexible workflows, archival, and multi-channel distribution.
 
 No database, no complexity—just clean architecture, RSS/Atom feeds, an LLM, and your inbox.
